@@ -1,7 +1,9 @@
 import React, { Component } from 'react';
-import Web3 from 'web3'
+import Web3 from 'web3' 
 import './App.css';
 import Color from '../abis/Color.json'
+
+
 
 class App extends Component {
 
@@ -50,10 +52,34 @@ class App extends Component {
     }
   }
 
-  mint = (color) => {
-    this.state.contract.methods.mint(color).send({ from: this.state.account })
+  async pushIpfsData(buffer) {
+    const IPFS = require('ipfs-http-client');
+    const ipfs = await new IPFS({ host: 'ipfs.infura.io', port: 5001, protocol: 'https' });
+    console.log(ipfs)
+    const ipfsHash = await ipfs.add(buffer)
+    if(ipfsHash) {
+      console.log(ipfsHash[0].hash)
+      return ipfsHash[0].hash
+    } else {
+      alert('Ipfs file not created')
+    }
+  }
+
+  async convertToBuffer(Metadata) {
+    
+  }
+
+  async mint(color, name, description) {
+    var Metadata = await require('../abis/metadata.json')
+    console.log(Metadata)
+    Metadata.name = name
+    Metadata.description = description  
+    const buffer = Buffer.from(Metadata.toString())
+    const tokenURI = this.pushIpfsData(buffer) 
+
+    this.state.contract.methods.mint(color, tokenURI).send({ from: this.state.account })
     .once('receipt', (receipt) => {
-      this.setState({
+      this.setState({ 
         colors: [...this.state.colors, color]
       })
     })
@@ -65,7 +91,8 @@ class App extends Component {
       account: '',
       contract: null,
       totalSupply: 0,
-      colors: []
+      colors: [],
+      TokenURIS: []
     }
   }
 
@@ -75,7 +102,7 @@ class App extends Component {
         <nav className="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
           <a
             className="navbar-brand col-sm-3 col-md-2 mr-0"
-            href="http://www.dappuniversity.com/bootcamp"
+            href="http://www.theboilerplante.net"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -95,7 +122,9 @@ class App extends Component {
                 <form onSubmit={(event) => {
                   event.preventDefault()
                   const color = this.color.value
-                  this.mint(color)
+                  const name = this.name.value
+                  const description = this.description.value
+                  this.mint(color, name, description)
                 }}>
                   <input
                     type='text'
@@ -103,6 +132,19 @@ class App extends Component {
                     placeholder='e.g. #FFFFFF'
                     ref={(input) => { this.color = input }}
                   />
+                     <input
+                    type='text'
+                    className='form-control mb-1'
+                    placeholder='Name'
+                    ref={(input) => { this.name = input }}
+                  />
+                     <input
+                    type='textarea'
+                    className='form-control mb-1'
+                    placeholder='Description'
+                    ref={(input) => { this.description = input }}
+                  />
+
                   <input
                     type='submit'
                     className='btn btn-block btn-primary'
